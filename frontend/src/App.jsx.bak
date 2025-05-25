@@ -1,0 +1,577 @@
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  Navigate
+} from "react-router-dom";
+import CompanyRegister from "./CompanyRegister";
+import UserRegister from "./UserRegister";
+import Login from "./Login";
+import CompanyConfig from "./CompanyConfig";
+import KnowledgeBase from "./KnowledgeBase";
+import Chatbot from "./Chatbot";
+import './App.css'
+
+// Enhanced Dashboard component with e-commerce features
+const Dashboard = () => {
+  const [activeTab, setActiveTab] = React.useState('products');
+  const userRole = localStorage.getItem("role") || "user";
+  console.log("Current user role:", userRole);
+  const [products, setProducts] = React.useState([]);
+  const [services, setServices] = React.useState([]);
+  const [policies, setPolicies] = React.useState([]);
+  const [faqs, setFaqs] = React.useState([]);
+  const [cartItems, setCartItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const token = localStorage.getItem("accessToken");
+  
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("tokenType");
+    localStorage.removeItem("role");
+    window.location.href = "/login";
+  };
+
+  // Function to fetch data from the backend
+  const fetchData = async (endpoint) => {
+    try {
+      const response = await fetch(`http://localhost:8000${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data from ${endpoint}`);
+      }
+      
+      return await response.json();
+    } catch (err) {
+      console.error(`Error fetching data from ${endpoint}:`, err);
+      setError(err.message);
+      return [];
+    }
+  };
+
+  // Function to add item to cart
+  const addToCart = async (productId, serviceId = null) => {
+    try {
+      console.log(`Adding to cart: product_id=${productId}, service_id=${serviceId}`);
+      console.log(`Using token: ${token}`);
+      
+      const requestBody = {
+        product_id: productId,
+        service_id: serviceId,
+        quantity: 1
+      };
+      console.log('Request body:', requestBody);
+      
+      const response = await fetch('http://localhost:8000/cart/items', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to add item to cart: ${response.status} ${errorText}`);
+      }
+      
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+      
+      // Refresh cart items after adding
+      fetchCartItems();
+      alert('Item added to cart successfully!');
+    } catch (err) {
+      console.error('Error adding item to cart:', err);
+      alert(`Error adding item to cart: ${err.message}`);
+    }
+  };
+
+  // Function to remove item from cart
+  const removeFromCart = async (itemId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/cart/items/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove item from cart');
+      }
+      
+      // Refresh cart items after removing
+      fetchCartItems();
+      alert('Item removed from cart successfully!');
+    } catch (err) {
+      console.error('Error removing item from cart:', err);
+      alert(`Error removing item from cart: ${err.message}`);
+    }
+  };
+
+  // Function to checkout
+  const checkout = async () => {
+    try {
+      console.log('Checking out...');
+      const response = await fetch('http://localhost:8000/cart/checkout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to checkout');
+      }
+      
+      // Refresh cart items after checkout
+      fetchCartItems();
+      alert('Checkout successful! Your order has been placed.');
+    } catch (err) {
+      console.error('Error during checkout:', err);
+      alert(`Error during checkout: ${err.message}`);
+    }
+  };
+
+  // Function to fetch cart items
+  const fetchCartItems = async () => {
+    console.log('Fetching cart items...');
+    try {
+      const items = await fetchData('/cart/items');
+      console.log('Cart items received:', items);
+      setCartItems(items || []);
+    } catch (err) {
+      console.error('Error fetching cart items:', err);
+      setCartItems([]);
+    }
+  };
+
+  // Fetch data on component mount
+  React.useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [productsData, servicesData, policiesData, faqsData, cartData] = await Promise.all([
+          fetchData('/products'),
+          fetchData('/services'),
+          fetchData('/policies'),
+          fetchData('/faqs'),
+          fetchData('/cart/items')
+        ]);
+        
+        setProducts(productsData || []);
+        setServices(servicesData || []);
+        setPolicies(policiesData || []);
+        setFaqs(faqsData || []);
+        setCartItems(cartData || []);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+
+  // Fallback data if API fails
+  const fallbackProducts = [
+    { id: 1, name: "SuperWidget", price: 99.99, image: "https://via.placeholder.com/150", description: "Our flagship product with amazing features A and B." },
+    { id: 2, name: "MegaGadget", price: 199.99, image: "https://via.placeholder.com/150", description: "Ultra fast with long battery life and AI-powered capabilities." },
+    { id: 3, name: "TechPro X1", price: 149.99, image: "https://via.placeholder.com/150", description: "Professional-grade tool for serious users." },
+    { id: 4, name: "SmartHome Hub", price: 129.99, image: "https://via.placeholder.com/150", description: "Control all your smart devices from one central location." }
+  ];
+
+  const fallbackServices = [
+    { id: 1, name: "Premium Support", price: 19.99, period: "monthly", description: "24/7 priority support with 1-hour response time." },
+    { id: 2, name: "Installation Service", price: 49.99, period: "one-time", description: "Professional installation of your products by certified technicians." },
+    { id: 3, name: "Extended Warranty", price: 29.99, period: "yearly", description: "Extend your product warranty by an additional 2 years." },
+    { id: 4, name: "Training Session", price: 79.99, period: "one-time", description: "One-on-one training session to get the most out of your products." }
+  ];
+
+  const fallbackPolicies = [
+    { id: 1, title: "Return Policy", content: "Products can be returned within 30 days of purchase for a full refund, provided they are in original condition. Opened software is non-refundable." },
+    { id: 2, title: "Shipping Policy", content: "Standard shipping takes 3-5 business days. Express shipping (2-day delivery) is available for an additional fee." },
+    { id: 3, title: "Privacy Policy", content: "We respect your privacy and are committed to protecting your personal data. We will only use your information to administer your account and provide the products and services you requested from us." },
+    { id: 4, title: "Terms of Service", content: "By using our website and services, you agree to these terms. We reserve the right to change these terms at any time, so please check them regularly." }
+  ];
+
+  const fallbackFaqs = [
+    { id: 1, question: "How do I reset my password?", answer: "You can reset your password by clicking the 'Forgot Password' link on the login page. You will receive an email with instructions to reset your password." },
+    { id: 2, question: "What payment methods do you accept?", answer: "We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and bank transfers for orders over $500." },
+    { id: 3, question: "How can I track my order?", answer: "Once your order ships, you'll receive a tracking number via email. You can also view your order status in your account dashboard." },
+    { id: 4, question: "Do you ship internationally?", answer: "Yes, we ship to most countries worldwide. International shipping rates and delivery times vary by location." },
+    { id: 5, question: "How do I contact customer support?", answer: "You can contact our support team via email at support@example.com, by phone at 1-800-EXAMPLE, or through the chat feature on our website." }
+  ];
+
+  // Use fallback data if API fails
+  const displayProducts = products.length > 0 ? products : fallbackProducts;
+  const displayServices = services.length > 0 ? services : fallbackServices;
+  const displayPolicies = policies.length > 0 ? policies : fallbackPolicies;
+  const displayFaqs = faqs.length > 0 ? faqs : fallbackFaqs;
+
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  return (
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h2>Customer Support Dashboard</h2>
+        <div className="user-info">
+          <span>Role: {userRole.charAt(0).toUpperCase() + userRole.slice(1)}</span>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        </div>
+      </div>
+      
+      <div className="dashboard-tabs">
+        <button 
+          className={`tab-btn ${activeTab === 'products' ? 'active' : ''}`}
+          onClick={() => setActiveTab('products')}
+        >
+          Products
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'services' ? 'active' : ''}`}
+          onClick={() => setActiveTab('services')}
+        >
+          Services
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'policies' ? 'active' : ''}`}
+          onClick={() => setActiveTab('policies')}
+        >
+          Policies
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'faqs' ? 'active' : ''}`}
+          onClick={() => setActiveTab('faqs')}
+        >
+          FAQs
+        </button>
+        {userRole === 'agent' && (
+          <button 
+            className={`tab-btn ${activeTab === 'tickets' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tickets')}
+          >
+            Support Tickets
+          </button>
+        )}
+        {(userRole === 'Customer' || userRole === 'user') && (
+          <button 
+            className={`tab-btn ${activeTab === 'cart' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cart')}
+          >
+            Cart ({cartItems.length})
+          </button>
+        )}
+      </div>
+      
+      <div className="dashboard-content">
+        {activeTab === 'products' && (
+          <div className="products-grid">
+            {displayProducts.map(product => (
+              <div key={product.id} className="product-card">
+                <img src={product.image || "https://via.placeholder.com/150"} alt={product.name} className="product-image" />
+                <h3>{product.name}</h3>
+                <p className="product-price">${typeof product.price === 'number' ? (product.price / 100).toFixed(2) : '99.99'}</p>
+                <p className="product-description">{product.description}</p>
+                {(userRole === 'Customer' || userRole === 'user') ? (
+                  <button 
+                    className="add-to-cart-btn"
+                    onClick={() => addToCart(product.id)}
+                  >
+                    Add to Cart
+                  </button>
+                ) : (userRole === 'Admin' || userRole === 'admin') ? (
+                  <div className="admin-actions">
+                    <button className="edit-btn">Edit</button>
+                    <button className="delete-btn">Delete</button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {activeTab === 'services' && (
+          <div className="services-list">
+            {displayServices.map(service => (
+              <div key={service.id} className="service-card">
+                <h3>{service.name}</h3>
+                <p className="service-price">
+                  ${typeof service.price === 'number' ? (service.price / 100).toFixed(2) : '19.99'} 
+                  <span className="service-period">/{service.period || 'monthly'}</span>
+                </p>
+                <p className="service-description">{service.description}</p>
+                {(userRole === 'Customer' || userRole === 'user') ? (
+                  <button 
+                    className="subscribe-btn"
+                    onClick={() => addToCart(null, service.id)}
+                  >
+                    Subscribe
+                  </button>
+                ) : (userRole === 'Admin' || userRole === 'admin') ? (
+                  <div className="admin-actions">
+                    <button className="edit-btn">Edit</button>
+                    <button className="delete-btn">Delete</button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {activeTab === 'policies' && (
+          <div className="policies-list">
+            {displayPolicies.map(policy => (
+              <div key={policy.id} className="policy-card">
+                <h3>{policy.title}</h3>
+                <p>{policy.content}</p>
+                {userRole === 'Admin' && (
+                  <div className="admin-actions">
+                    <button className="edit-btn">Edit</button>
+                    <button className="delete-btn">Delete</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {activeTab === 'faqs' && (
+          <div className="faqs-list">
+            {displayFaqs.map(faq => (
+              <div key={faq.id} className="faq-card">
+                <h3>{faq.question}</h3>
+                <p>{faq.answer}</p>
+                {userRole === 'Admin' && (
+                  <div className="admin-actions">
+                    <button className="edit-btn">Edit</button>
+                    <button className="delete-btn">Delete</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {activeTab === 'tickets' && userRole === 'agent' && (
+          <div className="tickets-list">
+            <h3>Support Tickets</h3>
+            <p>You have 5 open tickets that need your attention.</p>
+            <table className="tickets-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Customer</th>
+                  <th>Subject</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>#1234</td>
+                  <td>John Doe</td>
+                  <td>Product not working</td>
+                  <td><span className="status-new">New</span></td>
+                  <td>2023-06-15</td>
+                  <td><button className="view-ticket-btn">View</button></td>
+                </tr>
+                <tr>
+                  <td>#1235</td>
+                  <td>Jane Smith</td>
+                  <td>Billing question</td>
+                  <td><span className="status-open">Open</span></td>
+                  <td>2023-06-14</td>
+                  <td><button className="view-ticket-btn">View</button></td>
+                </tr>
+                <tr>
+                  <td>#1236</td>
+                  <td>Bob Johnson</td>
+                  <td>Return request</td>
+                  <td><span className="status-pending">Pending</span></td>
+                  <td>2023-06-13</td>
+                  <td><button className="view-ticket-btn">View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'cart' && (userRole === 'Customer' || userRole === 'user') && (
+          <div className="cart-container">
+            <h3>Your Cart</h3>
+            {cartItems.length === 0 ? (
+              <p>Your cart is empty.</p>
+            ) : (
+              <>
+                <div className="cart-items">
+                  {cartItems.map(item => {
+                    // Find the product or service in our lists
+                    const product = item.product_id ? displayProducts.find(p => p.id === item.product_id) : null;
+                    const service = item.service_id ? displayServices.find(s => s.id === item.service_id) : null;
+                    
+                    return (
+                      <div key={item.id} className="cart-item">
+                        <div className="cart-item-details">
+                          <h4>{product ? product.name : service ? service.name : 'Unknown Item'}</h4>
+                          <p>
+                            {product ? product.description : service ? service.description : ''}
+                          </p>
+                          <p className="cart-item-price">
+                            ${product ? product.price : service ? service.price : 0}
+                            {service && service.period ? `/${service.period}` : ''}
+                          </p>
+                          <p>Quantity: {item.quantity}</p>
+                        </div>
+                        <button 
+                          className="remove-from-cart-btn"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="cart-summary">
+                  <p className="cart-total">
+                    Total: $
+                    {cartItems.reduce((total, item) => {
+                      // Find the product or service in our lists
+                      const product = item.product_id ? displayProducts.find(p => p.id === item.product_id) : null;
+                      const service = item.service_id ? displayServices.find(s => s.id === item.service_id) : null;
+                      const price = product ? product.price : service ? service.price : 0;
+                      return total + (price * item.quantity);
+                    }, 0).toFixed(2)}
+                  </p>
+                  <button 
+                    className="checkout-btn"
+                    onClick={checkout}
+                  >
+                    Checkout
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ProtectedRoute component to handle authentication
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) {
+    console.log("No access token found, redirecting to login");
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+export default function App() {
+  const isLoggedIn = localStorage.getItem("accessToken");
+  const userRole = localStorage.getItem("role");
+  
+  return (
+    <Router>
+      <div className="app-bg">
+        <nav className="nav-bar">
+          {!isLoggedIn ? (
+            // Navigation for non-logged in users
+            <>
+              <Link className="nav-btn" to="/login">Login</Link>
+              <Link className="nav-btn" to="/register-company">Register Company</Link>
+              <Link className="nav-btn" to="/register-user">Register User</Link>
+            </>
+          ) : (
+            // Navigation for logged in users based on role
+            <>
+              <Link className="nav-btn" to="/dashboard">Dashboard</Link>
+              
+              {userRole === 'admin' && (
+                <>
+                  <Link className="nav-btn" to="/company-config">Company Config</Link>
+                  <Link className="nav-btn" to="/knowledge-base">Knowledge Base</Link>
+                </>
+              )}
+              
+              {userRole === 'agent' && (
+                <>
+                  <Link className="nav-btn" to="/knowledge-base">Knowledge Base</Link>
+                </>
+              )}
+              
+              <button 
+                className="nav-btn" 
+                onClick={() => {
+                  localStorage.removeItem("accessToken");
+                  localStorage.removeItem("tokenType");
+                  localStorage.removeItem("role");
+                  window.location.href = "/login";
+                }}
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </nav>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register-company" element={<CompanyRegister />} />
+          <Route path="/register-user" element={<UserRegister />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/company-config" 
+            element={
+              <ProtectedRoute>
+                <CompanyConfig />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/knowledge-base" 
+            element={
+              <ProtectedRoute>
+                <KnowledgeBase />
+              </ProtectedRoute>
+            } 
+          />
+          {/* Redirect default to login or dashboard based on login status */}
+          <Route path="/*" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} /> 
+        </Routes>
+        
+        {/* Chatbot is available on all pages */}
+        <Chatbot />
+      </div>
+    </Router>
+  );
+}

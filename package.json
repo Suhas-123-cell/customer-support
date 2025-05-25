@@ -1,0 +1,14 @@
+{
+  "name": "customer-support",
+  "version": "1.0.0",
+  "description": "Customer Support Application",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3"
+  }
+}
