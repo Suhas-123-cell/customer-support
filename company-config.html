@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Configuration Dashboard</title>
+    <link rel="stylesheet" href="company-config.css">
+</head>
+<body>
+    <script>
+      // Protect this page: only allow Admins (case-insensitive)
+      const storedRole = localStorage.getItem('role') || '';
+      if (storedRole.toLowerCase() !== 'admin') {
+        window.location.href = '/dashboard';
+      }
+    </script>
+    <div class="container">
+        <h1>Company Dashboard</h1>
+        <form id="companyForm" autocomplete="off">
+            <div class="inputs" style="grid-template-columns: 1fr; margin-bottom: 2rem;">
+                <input type="number" id="companyId" placeholder="Company ID*" required>
+            </div>
+            <!-- Products Section -->
+            <section class="section" id="products-section">
+                <h2>Products</h2>
+                <div class="inputs">
+                    <input type="text" id="productName" placeholder="Product Name*" required>
+                    <textarea id="productDescription" placeholder="Product Description*" required></textarea>
+                    <input type="number" id="productPrice" placeholder="Product Price*" min="0" required>
+                    <select id="productCategory" required>
+                        <option value="">Select Category*</option>
+                        <option value="Software">Software</option>
+                        <option value="Hardware">Hardware</option>
+                        <option value="Subscription">Subscription</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input type="file" id="productImage" accept="image/*">
+                    <button type="button" id="addProduct">Add Product</button>
+                </div>
+                <div class="preview" id="productsPreview"></div>
+            </section>
+
+            <!-- Services Section -->
+            <section class="section" id="services-section">
+                <h2>Services</h2>
+                <div class="inputs">
+                    <input type="text" id="serviceName" placeholder="Service Name*" required>
+                    <textarea id="serviceDescription" placeholder="Service Description*" required></textarea>
+                    <select id="serviceType" required>
+                        <option value="">Select Type*</option>
+                        <option value="Online">Online</option>
+                        <option value="Onsite">Onsite</option>
+                        <option value="Support">Support</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input type="text" id="serviceDelivery" placeholder="Estimated Delivery Time*" required>
+                    <button type="button" id="addService">Add Service</button>
+                </div>
+                <div class="preview" id="servicesPreview"></div>
+            </section>
+
+            <!-- FAQs Section -->
+            <section class="section" id="faqs-section">
+                <h2>FAQs</h2>
+                <div class="inputs">
+                    <input type="text" id="faqQuestion" placeholder="Question*" required>
+                    <textarea id="faqAnswer" placeholder="Answer*" required></textarea>
+                    <button type="button" id="addFAQ">Add FAQ</button>
+                </div>
+                <div class="preview" id="faqsPreview"></div>
+            </section>
+
+            <!-- Policies Section -->
+            <section class="section" id="policies-section">
+                <h2>Policies</h2>
+                <div class="inputs">
+                    <input type="text" id="policyTitle" placeholder="Policy Title*" required>
+                    <textarea id="policyContent" placeholder="Policy Content*" required></textarea>
+                    <button type="button" id="addPolicy">Add Policy</button>
+                </div>
+                <div class="preview" id="policiesPreview"></div>
+            </section>
+
+            <div class="actions">
+                <button type="button" id="saveAll">Save All</button>
+                <button type="button" id="clearAll">Clear All</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        // Data storage
+        const data = {
+            products: [],
+            services: [],
+            faqs: [],
+            policies: []
+        };
+
+        // Utility: Render preview for each section
+        function renderPreview(section, arr, renderFn) {
+            const preview = document.getElementById(section + 'Preview');
+            preview.innerHTML = arr.length === 0 ? '<em>No entries yet.</em>' : '';
+            arr.forEach((item, idx) => {
+                const box = document.createElement('div');
+                box.className = 'preview-box';
+                box.innerHTML = renderFn(item, idx);
+                const delBtn = document.createElement('button');
+                delBtn.textContent = 'Delete';
+                delBtn.className = 'delete-btn';
+                delBtn.onclick = () => {
+                    arr.splice(idx, 1);
+                    renderPreview(section, arr, renderFn);
+                };
+                box.appendChild(delBtn);
+                preview.appendChild(box);
+            });
+        }
+
+        // Product Add
+        document.getElementById('addProduct').onclick = function() {
+            const name = document.getElementById('productName');
+            const desc = document.getElementById('productDescription');
+            const price = document.getElementById('productPrice');
+            const cat = document.getElementById('productCategory');
+            const img = document.getElementById('productImage');
+            // Validation
+            [name, desc, price, cat].forEach(input => input.classList.remove('error'));
+            if (!name.value.trim() || !desc.value.trim() || !price.value || !cat.value) {
+                [name, desc, price, cat].forEach(input => {
+                    if (!input.value.trim()) input.classList.add('error');
+                });
+                return;
+            }
+            let imgData = null;
+            if (img.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgData = e.target.result;
+                    data.products.push({
+                        name: name.value.trim(),
+                        description: desc.value.trim(),
+                        price: parseFloat(price.value),
+                        category: cat.value,
+                        image: imgData
+                    });
+                    renderPreview('products', data.products, renderProduct);
+                };
+                reader.readAsDataURL(img.files[0]);
+            } else {
+                data.products.push({
+                    name: name.value.trim(),
+                    description: desc.value.trim(),
+                    price: parseFloat(price.value),
+                    category: cat.value,
+                    image: null
+                });
+                renderPreview('products', data.products, renderProduct);
+            }
+            name.value = desc.value = price.value = '';
+            cat.value = '';
+            img.value = '';
+        };
+        function renderProduct(p, idx) {
+            return `<strong>${p.name}</strong> (${p.category})<br>
+                $${p.price.toFixed(2)}<br>
+                <small>${p.description}</small><br>
+                ${p.image ? `<img src='${p.image}' alt='Product Image' class='thumb'>` : ''}`;
+        }
+
+        // Service Add
+        document.getElementById('addService').onclick = function() {
+            const name = document.getElementById('serviceName');
+            const desc = document.getElementById('serviceDescription');
+            const type = document.getElementById('serviceType');
+            const delivery = document.getElementById('serviceDelivery');
+            [name, desc, type, delivery].forEach(input => input.classList.remove('error'));
+            if (!name.value.trim() || !desc.value.trim() || !type.value || !delivery.value.trim()) {
+                [name, desc, type, delivery].forEach(input => {
+                    if (!input.value.trim()) input.classList.add('error');
+                });
+                return;
+            }
+            data.services.push({
+                name: name.value.trim(),
+                description: desc.value.trim(),
+                type: type.value,
+                delivery: delivery.value.trim()
+            });
+            renderPreview('services', data.services, renderService);
+            name.value = desc.value = delivery.value = '';
+            type.value = '';
+        };
+        function renderService(s, idx) {
+            return `<strong>${s.name}</strong> (${s.type})<br>
+                <small>${s.description}</small><br>
+                <em>Delivery: ${s.delivery}</em>`;
+        }
+
+        // FAQ Add
+        document.getElementById('addFAQ').onclick = function() {
+            const q = document.getElementById('faqQuestion');
+            const a = document.getElementById('faqAnswer');
+            [q, a].forEach(input => input.classList.remove('error'));
+            if (!q.value.trim() || !a.value.trim()) {
+                [q, a].forEach(input => {
+                    if (!input.value.trim()) input.classList.add('error');
+                });
+                return;
+            }
+            data.faqs.push({
+                question: q.value.trim(),
+                answer: a.value.trim()
+            });
+            renderPreview('faqs', data.faqs, renderFAQ);
+            q.value = a.value = '';
+        };
+        function renderFAQ(f, idx) {
+            return `<strong>Q:</strong> ${f.question}<br><strong>A:</strong> ${f.answer}`;
+        }
+
+        // Policy Add
+        document.getElementById('addPolicy').onclick = function() {
+            const t = document.getElementById('policyTitle');
+            const c = document.getElementById('policyContent');
+            [t, c].forEach(input => input.classList.remove('error'));
+            if (!t.value.trim() || !c.value.trim()) {
+                [t, c].forEach(input => {
+                    if (!input.value.trim()) input.classList.add('error');
+                });
+                return;
+            }
+            data.policies.push({
+                title: t.value.trim(),
+                content: c.value.trim()
+            });
+            renderPreview('policies', data.policies, renderPolicy);
+            t.value = c.value = '';
+        };
+        function renderPolicy(p, idx) {
+            return `<strong>${p.title}</strong><br><small>${p.content}</small>`;
+        }
+
+        // Save All
+        document.getElementById('saveAll').onclick = async function() {
+            const companyId = document.getElementById('companyId').value;
+            if (!companyId) {
+                alert('Please enter your Company ID.');
+                document.getElementById('companyId').classList.add('error');
+                return;
+            }
+            document.getElementById('companyId').classList.remove('error');
+            // Products: send as multipart/form-data
+            for (const product of data.products) {
+                const formData = new FormData();
+                formData.append('name', product.name);
+                formData.append('description', product.description);
+                formData.append('price', product.price);
+                formData.append('category', product.category);
+                formData.append('company_id', companyId);
+                if (product.image) {
+                    // Convert base64 to Blob
+                    const res = await fetch(product.image);
+                    const blob = await res.blob();
+                    formData.append('image', blob, 'product-image.png');
+                }
+                try {
+                    await fetch(`/companies/${companyId}/products`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch (e) { console.error('Product upload failed', e); }
+            }
+            // Services, FAQs, Policies: send as JSON
+            const postData = async (endpoint, arr) => {
+                for (const item of arr) {
+                    item.company_id = companyId;
+                    try {
+                        await fetch(`/companies/${companyId}/${endpoint}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(item)
+                        });
+                    } catch (e) { console.error(`${endpoint} upload failed`, e); }
+                }
+            };
+            await postData('services', data.services);
+            await postData('faqs', data.faqs);
+            await postData('policies', data.policies);
+            alert('All data sent to backend!');
+        };
+
+        // Clear All
+        document.getElementById('clearAll').onclick = function() {
+            if (confirm('Clear all data?')) {
+                data.products = [];
+                data.services = [];
+                data.faqs = [];
+                data.policies = [];
+                renderPreview('products', data.products, renderProduct);
+                renderPreview('services', data.services, renderService);
+                renderPreview('faqs', data.faqs, renderFAQ);
+                renderPreview('policies', data.policies, renderPolicy);
+            }
+        };
+
+        // Initial render
+        renderPreview('products', data.products, renderProduct);
+        renderPreview('services', data.services, renderService);
+        renderPreview('faqs', data.faqs, renderFAQ);
+        renderPreview('policies', data.policies, renderPolicy);
+    </script>
+</body>
+</html> 

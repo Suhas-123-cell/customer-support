@@ -1,0 +1,152 @@
+/* UserRegister.css */
+
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7f8fa;
+  padding: 16px;
+}
+
+.register-form {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+}
+
+.register-title {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 24px;
+  color: #1a237e;
+}
+
+.register-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px 32px;
+}
+
+@media (min-width: 700px) {
+  .register-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.form-required {
+  color: #e53935;
+  margin-left: 2px;
+}
+
+.form-input {
+  padding: 10px 12px;
+  border: 1px solid #bdbdbd;
+  border-radius: 5px;
+  font-size: 1rem;
+  background: #fafbfc;
+  transition: border 0.2s;
+}
+
+.form-input:focus {
+  border: 1.5px solid #3949ab;
+  outline: none;
+  background: #fff;
+}
+
+.form-input-error {
+  border: 1.5px solid #e53935;
+  background: #fff5f5;
+}
+
+.form-error {
+  color: #e53935;
+  font-size: 0.92rem;
+  margin-top: 4px;
+}
+
+.form-checkbox {
+  flex-direction: row;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.form-checkbox-input {
+  margin-right: 8px;
+}
+
+.form-checkbox-label {
+  font-size: 0.98rem;
+  color: #333;
+}
+
+.form-link {
+  color: #3949ab;
+  text-decoration: underline;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.form-button {
+  background: #3949ab;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 32px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.form-button:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
+}
+
+.form-button:hover:not(:disabled) {
+  background: #1a237e;
+}
+
+.form-modal {
+  margin-top: 24px;
+  padding: 14px 18px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 1.08rem;
+  font-weight: 500;
+}
+
+.form-modal-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1.5px solid #43a047;
+}
+
+.form-modal-error {
+  background: #ffebee;
+  color: #c62828;
+  border: 1.5px solid #e53935;
+} 
