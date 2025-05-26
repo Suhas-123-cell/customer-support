@@ -66,10 +66,6 @@ export default function Login() {
     }
 
     // For all other accounts, try to authenticate with the backend
-    const formData = new URLSearchParams();
-    formData.append("username", email); // Backend expects 'username' for email
-    formData.append("password", password);
-
     try {
       console.log(`Attempting to login with email: ${email}`);
       
@@ -77,168 +73,59 @@ export default function Login() {
       const BASE_URL = import.meta.env.VITE_API_URL || 
                      (window.location.origin !== 'null' ? window.location.origin : 'http://localhost:8000');
       
-      // First test if the API is working
-      try {
-        console.log("Testing API with GET request...");
-        const testResponse = await fetch(`${BASE_URL}/api/test`);
-        const testData = await testResponse.json();
-        console.log("Test response:", testData);
-        
-        console.log("Testing API with POST request...");
-        const testPostResponse = await fetch(`${BASE_URL}/api/test`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ test: true })
-        });
-        const testPostData = await testPostResponse.json();
-        console.log("Test POST response:", testPostData);
-        
-        // Test form submission
-        console.log("Testing form submission...");
-        const testFormData = new URLSearchParams();
-        testFormData.append("username", "test@example.com");
-        testFormData.append("password", "testpassword");
-        
-        const testFormResponse = await fetch(`${BASE_URL}/api/test-form`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: testFormData.toString()
-        });
-        const testFormData2 = await testFormResponse.json();
-        console.log("Test form submission response:", testFormData2);
-      } catch (testError) {
-        console.error("API test failed:", testError);
-      }
+      // Use the JSON login endpoint
+      const loginUrl = `${BASE_URL}/api/json-login`;
+      console.log(`Login URL: ${loginUrl}`);
       
-      // Try both login endpoints
-      const directLoginUrl = `${BASE_URL}/api/direct-login`;
-      const regularLoginUrl = `${BASE_URL}/api/users/login`;
+      // Prepare JSON data
+      const jsonData = {
+        username: email,
+        password: password
+      };
       
-      console.log(`Base URL: ${BASE_URL}`);
-      console.log(`Direct login URL: ${directLoginUrl}`);
-      console.log(`Regular login URL: ${regularLoginUrl}`);
+      // Log detailed request information
+      console.log("Making login request with:");
+      console.log("- URL:", loginUrl);
+      console.log("- Method: POST");
+      console.log("- Headers:", { "Content-Type": "application/json" });
+      console.log("- Body:", JSON.stringify(jsonData));
       
-      // Log the request details
-      console.log(`Request headers: Content-Type: application/x-www-form-urlencoded`);
-      console.log(`Request body: ${formData.toString()}`);
-      
-      // Try the direct login endpoint first
-      try {
-        console.log("Trying direct login endpoint...");
-        const directRes = await fetch(directLoginUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: formData.toString(),
-          credentials: 'include', // Include cookies if any
-        });
-        
-        if (directRes.ok) {
-          console.log("Direct login successful!");
-          const directData = await directRes.json();
-          console.log("Direct login response data:", directData);
-          
-          // Store the token data
-          localStorage.setItem("accessToken", directData.access_token);
-          localStorage.setItem("tokenType", directData.token_type);
-          const userRole = directData.role ? directData.role.trim() : "";
-          localStorage.setItem("role", userRole);
-          
-          // Extract company_id from JWT token if possible
-          try {
-            const tokenParts = directData.access_token.split('.');
-            if (tokenParts.length === 3) {
-              const payload = JSON.parse(atob(tokenParts[1]));
-              console.log('Token payload:', payload);
-              if (payload.company_id) {
-                localStorage.setItem("company_id", payload.company_id);
-              }
-            }
-          } catch (tokenErr) {
-            console.error('Error parsing token:', tokenErr);
-          }
-          
-          // Redirect based on role
-          if (userRole.toLowerCase() === "admin") {
-            navigate("/company-config");
-          } else {
-            navigate("/dashboard");
-          }
-          
-          return; // Exit the function
-        } else {
-          console.log(`Direct login failed with status: ${directRes.status}`);
-          try {
-            const errorText = await directRes.text();
-            console.log("Direct login error response:", errorText);
-          } catch (e) {
-            console.error("Could not read direct login error response");
-          }
-          // Continue to try the regular login endpoint
-        }
-      } catch (directError) {
-        console.error("Direct login error:", directError);
-        // Continue to try the regular login endpoint
-      }
-      
-      // Try the regular login endpoint
-      console.log("Trying regular login endpoint...");
-      const res = await fetch(regularLoginUrl, {
+      // Make the request
+      const res = await fetch(loginUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
-        body: formData.toString(),
-        credentials: 'include', // Include cookies if any
+        body: JSON.stringify(jsonData)
       });
 
       console.log(`Login response status: ${res.status}`);
       
+      // Handle errors
       if (!res.ok) {
         try {
-          const errorData = await res.json();
-          console.error('Login error response:', errorData);
-          throw new Error(errorData.detail || "Login failed. Please check your credentials.");
-        } catch (jsonError) {
-          console.error('Error parsing error response:', jsonError);
-          throw new Error(`Login failed with status ${res.status}. Please check your credentials.`);
+          const errorText = await res.text();
+          console.error('Login error response:', errorText);
+          throw new Error("Login failed. Please check your credentials.");
+        } catch (e) {
+          throw new Error(`Login failed with status ${res.status}. Please try again.`);
         }
       }
       
-      let data;
-      try {
-        data = await res.json();
-        console.log('Login response data:', data);
-      } catch (jsonError) {
-        console.error('Error parsing response:', jsonError);
-        throw new Error("Invalid response from server. Please try again later.");
-      }
+      // Parse the response
+      const data = await res.json();
       console.log('Login response data:', data);
 
-      // Store the token (e.g., in localStorage)
+      // Store the token data
       localStorage.setItem("accessToken", data.access_token);
       localStorage.setItem("tokenType", data.token_type);
       const userRole = data.role ? data.role.trim() : "";
       localStorage.setItem("role", userRole);
-      
-      // Extract company_id from JWT token if possible
-      try {
-        const tokenParts = data.access_token.split('.');
-        if (tokenParts.length === 3) {
-          const payload = JSON.parse(atob(tokenParts[1]));
-          console.log('Token payload:', payload);
-          if (payload.company_id) {
-            localStorage.setItem("company_id", payload.company_id);
-          }
-        }
-      } catch (tokenErr) {
-        console.error('Error parsing token:', tokenErr);
-      }
+      localStorage.setItem("company_id", "1"); // Default company ID
       
       console.log(`User role: ${userRole}`);
       
-      // Redirect based on role (case-insensitive)
+      // Redirect based on role
       if (userRole.toLowerCase() === "admin") {
         navigate("/company-config");
       } else {
@@ -248,6 +135,7 @@ export default function Login() {
     } catch (err) {
       console.error('Login error:', err);
       setError("❌ " + (err.message || "Invalid email or password. Please try again or use one of the demo accounts."));
+    } finally {
       setLoading(false);
     }
   };
