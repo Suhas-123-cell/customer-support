@@ -13,6 +13,7 @@ import CompanyConfig from "./CompanyConfig";
 // KnowledgeBase component is not available
 // import KnowledgeBase from "./KnowledgeBase";
 import Chatbot from "./Chatbot";
+import AgentAssistChatbot from "./AgentAssistChatbot";
 import './App.css'
 
 // Enhanced Dashboard component with e-commerce features
@@ -318,8 +319,11 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Add Chatbot component for all users */}
-      <Chatbot />
+      {/* Add Chatbot component only for customers */}
+      {userRole.toLowerCase() !== 'agent' && userRole.toLowerCase() !== 'admin' && <Chatbot />}
+      
+      {/* Add AgentAssistChatbot only for agents and admins */}
+      {(userRole.toLowerCase() === 'agent' || userRole.toLowerCase() === 'admin') && <AgentAssistChatbot />}
       
       <div className="dashboard-header">
         <h2>Customer Support Dashboard</h2>
@@ -888,6 +892,7 @@ function App() {
         <Route path="/company-config" element={<CompanyConfig />} />
         {/* <Route path="/knowledge-base" element={<KnowledgeBase />} /> */}
         <Route path="/chatbot" element={<Chatbot />} />
+        <Route path="/agent-assist" element={<AgentAssistChatbot />} />
         <Route path="/" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
