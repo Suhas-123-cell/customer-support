@@ -38,9 +38,12 @@ const Dashboard = () => {
   };
 
   // Function to fetch data from the backend
+  // Get API URL from environment variables
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  
   const fetchData = async (endpoint) => {
     try {
-      const response = await fetch(`http://localhost:8000${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
