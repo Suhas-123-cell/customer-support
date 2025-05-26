@@ -12,7 +12,7 @@ from config import settings
 from database import get_db
 from typing import List, Optional
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login") # Adjusted tokenUrl to match your user router
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/login") # Adjusted tokenUrl to match your user router
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
