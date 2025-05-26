@@ -46,13 +46,13 @@ print("allow_methods: ['*']")
 print("allow_headers: ['*']")
 
 # Include all routers
-app.include_router(company.router, prefix="/companies", tags=["Companies"])
-app.include_router(user.router, prefix="/users", tags=["Users"])
-app.include_router(products.router)
-app.include_router(services.router)
-app.include_router(policies.router)
-app.include_router(faqs.router)
-app.include_router(cart.router)
+app.include_router(company.router, prefix="/api/companies", tags=["Companies"])
+app.include_router(user.router, prefix="/api/users", tags=["Users"])
+app.include_router(products.router, prefix="/api")
+app.include_router(services.router, prefix="/api")
+app.include_router(policies.router, prefix="/api")
+app.include_router(faqs.router, prefix="/api")
+app.include_router(cart.router, prefix="/api")
 
 # Define API root route
 @app.get("/api", response_class=JSONResponse)
@@ -126,7 +126,7 @@ else:
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str, request: Request):
     # Skip API routes
-    if full_path.startswith("api/") or full_path in ["docs", "redoc", "openapi.json"]:
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
         raise HTTPException(status_code=404, detail="Not found")
     
     # Serve the index.html for all other routes to support client-side routing
