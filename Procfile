@@ -1,1 +1,1 @@
-web: npm run build && npm start
+web: bash build.sh && cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
