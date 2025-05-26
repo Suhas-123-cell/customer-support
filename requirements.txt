@@ -9,4 +9,5 @@ pydantic[email]
 python-jose[cryptography]
 pydantic-settings
 PyJWT
-python-multipart 
+python-multipart
+httpx
