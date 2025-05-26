@@ -525,6 +525,21 @@ class AgentChatRequest(BaseModel):
     agent_id: str
     customer_id: str
     message: str
+    
+class AgentAssistRequest(BaseModel):
+    agent_id: str
+    conversation_context: str
+    query: str
+    
+class TicketSummaryRequest(BaseModel):
+    agent_id: str
+    conversation_history: str
+    
+class ResponseDraftRequest(BaseModel):
+    agent_id: str
+    customer_query: str
+    relevant_info: str = ""
+    tone: str = "professional"  # Options: professional, friendly, technical, simple
 
 async def call_ai_service(prompt_messages: list):
     """
@@ -726,9 +741,17 @@ def needs_handoff(user_message: str, bot_response: str) -> bool:
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
-    """Regular customer chat endpoint"""
+    """Regular customer chat endpoint - only available to customers"""
     user_id = req.user_id
     user_message = req.message.strip()
+    
+    # Verify the user role (in a real app, this would check JWT token)
+    # For demo, we'll assume the user_id format indicates role
+    if user_id.startswith("agent_") or user_id.startswith("admin_"):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. This endpoint is only available to customers."
+        )
     
     print(f"Received chat request from user {user_id}: '{user_message}'")
 
@@ -824,6 +847,227 @@ async def chat_endpoint(req: ChatRequest):
 
     print("Returning normal response")
     return {"response": bot_response_content, "handoff": False}
+    
+# Agent-Assist Chatbot endpoint
+@app.post("/api/agent-assist")
+async def agent_assist_endpoint(req: AgentAssistRequest):
+    """
+    Agent-Assist Chatbot endpoint - only available to agents and admins
+    Provides:
+    1. Relevant information retrieval
+    2. Solution suggestions
+    3. Response drafting
+    4. Ticket summarization
+    """
+    agent_id = req.agent_id
+    conversation_context = req.conversation_context
+    query = req.query.strip()
+    
+    print(f"Received agent-assist request from agent {agent_id}")
+    
+    # Verify the agent role (in a real app, this would check JWT token)
+    # For demo, we'll assume the agent_id format indicates role
+    if not agent_id.startswith("agent_") and not agent_id.startswith("admin_"):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. This endpoint is only available to agents and admins."
+        )
+    
+    if not query:
+        return {"response": "Please provide a query or conversation context to assist with."}
+    
+    # 1. Search Knowledge Base with the query
+    kb_results = search_knowledge_base(query)
+    
+    # Also search with keywords from the conversation context
+    context_kb_results = []
+    if conversation_context:
+        # Extract key terms from conversation context
+        context_terms = set(conversation_context.lower().split())
+        # Filter out common words
+        common_words = {"the", "and", "is", "in", "to", "a", "of", "for", "with", "on", "at", "from", "by", "about", "as"}
+        key_terms = [term for term in context_terms if term not in common_words and len(term) > 3]
+        
+        # Search KB with each key term
+        for term in key_terms[:5]:  # Limit to top 5 terms to avoid too many searches
+            term_results = search_knowledge_base(term)
+            for item in term_results:
+                if item not in context_kb_results and item not in kb_results:
+                    context_kb_results.append(item)
+    
+    # Combine results, prioritizing direct query matches
+    all_kb_results = kb_results + context_kb_results
+    
+    # 2. Prepare knowledge base context for the AI
+    kb_context_str = ""
+    if all_kb_results:
+        kb_context_str = "Relevant information from our knowledge base:\n"
+        for item in all_kb_results:
+            item_info = f"Type: {item.get('type')}, Name/Title: {item.get('name') or item.get('title') or item.get('question')}, Details: {item.get('description') or item.get('answer') or item.get('content')}"
+            kb_context_str += f"- {item_info}\n"
+    
+    # 3. Construct prompt for AI
+    system_prompt = (
+        "You are AgentAssistGPT, an AI assistant designed to help customer support agents. "
+        "Your goal is to provide relevant information, suggest solutions, draft responses, and summarize tickets based on the conversation context. "
+        "Be concise, professional, and focus on actionable insights that will help the agent assist the customer effectively. "
+        "Format your response in sections:\n"
+        "1. SUMMARY: Brief summary of the customer issue based on the conversation\n"
+        "2. SUGGESTED SOLUTIONS: List potential solutions based on knowledge base\n"
+        "3. RESPONSE DRAFT: A professional response the agent could use or adapt\n"
+        "4. ADDITIONAL RESOURCES: Any other relevant information or internal resources\n"
+    )
+    
+    messages_for_llm = [{"role": "system", "content": system_prompt}]
+    
+    # Add conversation context if provided
+    if conversation_context:
+        messages_for_llm.append({
+            "role": "system", 
+            "content": f"Customer conversation context:\n{conversation_context}"
+        })
+    
+    # Add knowledge base context
+    if kb_context_str:
+        messages_for_llm.append({
+            "role": "system", 
+            "content": kb_context_str
+        })
+    
+    # Add the agent's query
+    messages_for_llm.append({
+        "role": "user", 
+        "content": f"Agent query: {query}\nPlease help me assist this customer effectively."
+    })
+    
+    # 4. Call AI service
+    try:
+        assistant_response = await call_ai_service(messages_for_llm)
+        print(f"Generated agent assist response: '{assistant_response[:50]}...'")
+        return {"response": assistant_response}
+    except HTTPException as e:
+        print(f"Agent-assist error for agent {agent_id}: {e.detail}")
+        return {
+            "response": f"I'm having trouble generating assistance right now. Please try again in a moment.",
+            "error": True
+        }
+        
+# Ticket Summarization endpoint
+@app.post("/api/ticket-summary")
+async def ticket_summary_endpoint(req: TicketSummaryRequest):
+    """
+    Ticket Summarization endpoint - only available to agents and admins
+    Provides a concise summary of a customer conversation/ticket
+    """
+    agent_id = req.agent_id
+    conversation_history = req.conversation_history
+    
+    print(f"Received ticket summary request from agent {agent_id}")
+    
+    # Verify the agent role (in a real app, this would check JWT token)
+    if not agent_id.startswith("agent_") and not agent_id.startswith("admin_"):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. This endpoint is only available to agents and admins."
+        )
+    
+    if not conversation_history:
+        return {"summary": "No conversation history provided to summarize."}
+    
+    # Construct prompt for AI
+    system_prompt = (
+        "You are TicketSummaryGPT, an AI assistant designed to summarize customer support conversations. "
+        "Your task is to analyze the provided conversation history and create a concise, structured summary. "
+        "Focus on: 1) The main customer issue, 2) Key details provided, 3) Current status, and 4) Next steps or resolution. "
+        "Format your response in a structured way that would be useful for a support ticket system."
+    )
+    
+    messages_for_llm = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Please summarize this customer conversation:\n\n{conversation_history}"}
+    ]
+    
+    # Call AI service
+    try:
+        summary = await call_ai_service(messages_for_llm)
+        print(f"Generated ticket summary: '{summary[:50]}...'")
+        return {"summary": summary}
+    except HTTPException as e:
+        print(f"Ticket summary error for agent {agent_id}: {e.detail}")
+        return {
+            "summary": "Unable to generate summary at this time. Please try again later.",
+            "error": True
+        }
+        
+# Response Drafting endpoint
+@app.post("/api/response-draft")
+async def response_draft_endpoint(req: ResponseDraftRequest):
+    """
+    Response Drafting endpoint - only available to agents and admins
+    Generates a draft response to a customer query
+    """
+    agent_id = req.agent_id
+    customer_query = req.customer_query
+    relevant_info = req.relevant_info
+    tone = req.tone
+    
+    print(f"Received response draft request from agent {agent_id}")
+    
+    # Verify the agent role (in a real app, this would check JWT token)
+    if not agent_id.startswith("agent_") and not agent_id.startswith("admin_"):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. This endpoint is only available to agents and admins."
+        )
+    
+    if not customer_query:
+        return {"draft": "No customer query provided to draft a response for."}
+    
+    # Define tone instructions
+    tone_instructions = {
+        "professional": "Use a formal, professional tone. Be courteous and precise.",
+        "friendly": "Use a warm, friendly tone. Be conversational but still professional.",
+        "technical": "Use a technical tone with appropriate terminology. Be precise and detailed.",
+        "simple": "Use simple language avoiding technical terms. Be clear and straightforward."
+    }
+    
+    # Get tone instruction or default to professional
+    selected_tone = tone_instructions.get(tone.lower(), tone_instructions["professional"])
+    
+    # Construct prompt for AI
+    system_prompt = (
+        f"You are ResponseDraftGPT, an AI assistant designed to help customer support agents draft responses. "
+        f"{selected_tone} "
+        f"Your task is to create a well-structured, helpful response to the customer query. "
+        f"Include appropriate greetings and closings. Address all aspects of the customer's question."
+    )
+    
+    messages_for_llm = [{"role": "system", "content": system_prompt}]
+    
+    # Add relevant information if provided
+    if relevant_info:
+        messages_for_llm.append({
+            "role": "system", 
+            "content": f"Relevant information to include in your response:\n{relevant_info}"
+        })
+    
+    # Add the customer query
+    messages_for_llm.append({
+        "role": "user", 
+        "content": f"Please draft a response to this customer query:\n\n{customer_query}"
+    })
+    
+    # Call AI service
+    try:
+        draft_response = await call_ai_service(messages_for_llm)
+        print(f"Generated response draft: '{draft_response[:50]}...'")
+        return {"draft": draft_response}
+    except HTTPException as e:
+        print(f"Response draft error for agent {agent_id}: {e.detail}")
+        return {
+            "draft": "Unable to generate a response draft at this time. Please try again later.",
+            "error": True
+        }
 
 # --- End Chatbot Specific Code ---
 
