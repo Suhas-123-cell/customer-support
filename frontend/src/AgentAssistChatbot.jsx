@@ -18,6 +18,11 @@ const AgentAssistChatbot = () => {
   // Get API URL from environment variables or use default
   const API_URL = import.meta.env.VITE_API_URL || 
                  (window.location.origin !== 'null' ? window.location.origin : 'http://localhost:8000');
+                 
+  // Helper function to construct API paths correctly
+  const getApiPath = (endpoint) => {
+    return endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+  };
   
   // Get agent ID from localStorage
   const agentId = localStorage.getItem('accessToken')?.startsWith('demo_token_for_agent') 
@@ -45,7 +50,8 @@ const AgentAssistChatbot = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${API_URL}/api/agent-assist`, {
+      const apiPath = getApiPath('/agent-assist');
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +89,8 @@ const AgentAssistChatbot = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${API_URL}/api/ticket-summary`, {
+      const apiPath = getApiPath('/ticket-summary');
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +127,8 @@ const AgentAssistChatbot = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${API_URL}/api/response-draft`, {
+      const apiPath = getApiPath('/response-draft');
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

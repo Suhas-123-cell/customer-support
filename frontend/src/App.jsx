@@ -47,7 +47,9 @@ const Dashboard = () => {
   
   const fetchData = async (endpoint) => {
     try {
-      const response = await fetch(`${API_URL}/api${endpoint}`, {
+      // Check if endpoint already starts with /api to avoid duplication
+      const apiPath = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+      const response = await fetch(`${API_URL}${apiPath}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -111,7 +113,8 @@ const Dashboard = () => {
   // Function to remove item from cart
   const removeFromCart = async (itemId) => {
     try {
-      const response = await fetch(`${API_URL}/api/cart/items/${itemId}`, {
+      const apiPath = `/api/cart/items/${itemId}`;
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -136,7 +139,8 @@ const Dashboard = () => {
   const checkout = async () => {
     try {
       console.log('Checking out...');
-      const response = await fetch(`${API_URL}/api/cart/checkout`, {
+      const apiPath = `/api/cart/checkout`;
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -181,7 +185,8 @@ const Dashboard = () => {
       
       console.log('Product data with company_id:', productData);
       
-      const response = await fetch(`${API_URL}/api/products/`, {
+      const apiPath = `/api/products/`;
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -220,7 +225,8 @@ const Dashboard = () => {
       
       console.log('Service data with company_id:', serviceData);
       
-      const response = await fetch(`${API_URL}/api/services/`, {
+      const apiPath = `/api/services/`;
+      const response = await fetch(`${API_URL}${apiPath}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
