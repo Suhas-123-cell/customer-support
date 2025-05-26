@@ -63,12 +63,49 @@ async def register_user(
             db_company = db.query(models.Company).filter(func.lower(models.Company.name) == normalized_name).first()
             if db_company:
                 company_id = db_company.id
+        # Validate company code format (should start with company name followed by a number)
+        import re
+        company_name_match = re.match(r'^([a-zA-Z]+)[0-9]+$', companyCode)
+        if not company_name_match:
+            print(f"Invalid company code format: {companyCode}")
+            raise HTTPException(
+                status_code=400, 
+                detail="Company code must start with company name followed by a number (e.g., acme123)"
+            )
+        
+        company_name = company_name_match.group(1).lower()
+        
+        # If company doesn't exist, create it in demo mode
         if not db_company:
-            print("Company not found for companyCode:", companyCode)
-            raise HTTPException(status_code=404, detail="Company not found")
-        if not user_id.startswith(db_company.name.lower()):
-            print(f"User ID '{user_id}' does not start with company name '{db_company.name}'")
-            raise HTTPException(status_code=400, detail=f"User ID must start with the company name: '{db_company.name}'")
+            try:
+                # Check if we're in demo mode (try to get the setting, default to False)
+                demo_mode = getattr(settings, "DEMO_MODE", False)
+                if demo_mode:
+                    # Create a new company with the extracted name
+                    new_company = models.Company(name=company_name)
+                    db.add(new_company)
+                    db.commit()
+                    db.refresh(new_company)
+                    company_id = new_company.id
+                    db_company = new_company
+                    print(f"Created new company: {company_name} with ID: {company_id}")
+                else:
+                    print("Company not found for companyCode:", companyCode)
+                    raise HTTPException(status_code=404, detail="Company not found")
+            except Exception as e:
+                print(f"Error creating company: {e}")
+                raise HTTPException(status_code=500, detail="Error creating company")
+        
+        # Validate email format (should be user@company.com)
+        email_parts = email.split('@')
+        if len(email_parts) != 2 or not email_parts[1].startswith(company_name):
+            print(f"Email '{email}' does not match the required format user@{company_name}.com")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Email must be in the format user@{company_name}.com"
+            )
+        
+        # Check if user already exists
         db_user_by_id = db.query(models.User).filter(models.User.user_id == user_id).first()
         if db_user_by_id:
             print("User ID already exists:", user_id)
