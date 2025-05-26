@@ -73,31 +73,147 @@ export default function Login() {
     try {
       console.log(`Attempting to login with email: ${email}`);
       
-      // Get API URL from environment variables or use current origin
-      const API_URL = import.meta.env.VITE_API_URL || 
+      // Get base URL from environment variables or use current origin
+      const BASE_URL = import.meta.env.VITE_API_URL || 
                      (window.location.origin !== 'null' ? window.location.origin : 'http://localhost:8000');
       
-      const loginUrl = `${API_URL}/api/users/login`;
-      console.log(`Login URL: ${loginUrl}`);
-      console.log(`Request body: username=${email}, password=${password.substring(0, 1)}***`);
+      // First test if the API is working
+      try {
+        console.log("Testing API with GET request...");
+        const testResponse = await fetch(`${BASE_URL}/api/test`);
+        const testData = await testResponse.json();
+        console.log("Test response:", testData);
+        
+        console.log("Testing API with POST request...");
+        const testPostResponse = await fetch(`${BASE_URL}/api/test`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ test: true })
+        });
+        const testPostData = await testPostResponse.json();
+        console.log("Test POST response:", testPostData);
+        
+        // Test form submission
+        console.log("Testing form submission...");
+        const testFormData = new URLSearchParams();
+        testFormData.append("username", "test@example.com");
+        testFormData.append("password", "testpassword");
+        
+        const testFormResponse = await fetch(`${BASE_URL}/api/test-form`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: testFormData.toString()
+        });
+        const testFormData2 = await testFormResponse.json();
+        console.log("Test form submission response:", testFormData2);
+      } catch (testError) {
+        console.error("API test failed:", testError);
+      }
       
-      const res = await fetch(loginUrl, {
+      // Try both login endpoints
+      const directLoginUrl = `${BASE_URL}/api/direct-login`;
+      const regularLoginUrl = `${BASE_URL}/api/users/login`;
+      
+      console.log(`Base URL: ${BASE_URL}`);
+      console.log(`Direct login URL: ${directLoginUrl}`);
+      console.log(`Regular login URL: ${regularLoginUrl}`);
+      
+      // Log the request details
+      console.log(`Request headers: Content-Type: application/x-www-form-urlencoded`);
+      console.log(`Request body: ${formData.toString()}`);
+      
+      // Try the direct login endpoint first
+      try {
+        console.log("Trying direct login endpoint...");
+        const directRes = await fetch(directLoginUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: formData.toString(),
+          credentials: 'include', // Include cookies if any
+        });
+        
+        if (directRes.ok) {
+          console.log("Direct login successful!");
+          const directData = await directRes.json();
+          console.log("Direct login response data:", directData);
+          
+          // Store the token data
+          localStorage.setItem("accessToken", directData.access_token);
+          localStorage.setItem("tokenType", directData.token_type);
+          const userRole = directData.role ? directData.role.trim() : "";
+          localStorage.setItem("role", userRole);
+          
+          // Extract company_id from JWT token if possible
+          try {
+            const tokenParts = directData.access_token.split('.');
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]));
+              console.log('Token payload:', payload);
+              if (payload.company_id) {
+                localStorage.setItem("company_id", payload.company_id);
+              }
+            }
+          } catch (tokenErr) {
+            console.error('Error parsing token:', tokenErr);
+          }
+          
+          // Redirect based on role
+          if (userRole.toLowerCase() === "admin") {
+            navigate("/company-config");
+          } else {
+            navigate("/dashboard");
+          }
+          
+          return; // Exit the function
+        } else {
+          console.log(`Direct login failed with status: ${directRes.status}`);
+          try {
+            const errorText = await directRes.text();
+            console.log("Direct login error response:", errorText);
+          } catch (e) {
+            console.error("Could not read direct login error response");
+          }
+          // Continue to try the regular login endpoint
+        }
+      } catch (directError) {
+        console.error("Direct login error:", directError);
+        // Continue to try the regular login endpoint
+      }
+      
+      // Try the regular login endpoint
+      console.log("Trying regular login endpoint...");
+      const res = await fetch(regularLoginUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: formData.toString(),
+        credentials: 'include', // Include cookies if any
       });
 
       console.log(`Login response status: ${res.status}`);
       
       if (!res.ok) {
-        const errorData = await res.json();
-        console.error('Login error response:', errorData);
-        throw new Error(errorData.detail || "Login failed. Please check your credentials.");
+        try {
+          const errorData = await res.json();
+          console.error('Login error response:', errorData);
+          throw new Error(errorData.detail || "Login failed. Please check your credentials.");
+        } catch (jsonError) {
+          console.error('Error parsing error response:', jsonError);
+          throw new Error(`Login failed with status ${res.status}. Please check your credentials.`);
+        }
       }
       
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+        console.log('Login response data:', data);
+      } catch (jsonError) {
+        console.error('Error parsing response:', jsonError);
+        throw new Error("Invalid response from server. Please try again later.");
+      }
       console.log('Login response data:', data);
 
       // Store the token (e.g., in localStorage)

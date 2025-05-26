@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordRequestForm
 from routers import company, user, products, services, policies, faqs, cart # Import all routers
+from database import get_db
+import models
 import os
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -61,13 +64,13 @@ async def api_root():
         "message": "Welcome to the Customer Support API",
         "documentation": "/docs",
         "available_endpoints": [
-            "/companies", 
-            "/users", 
-            "/products", 
-            "/services", 
-            "/policies", 
-            "/faqs", 
-            "/cart"
+            "/api/companies", 
+            "/api/users", 
+            "/api/products", 
+            "/api/services", 
+            "/api/policies", 
+            "/api/faqs", 
+            "/api/cart"
         ]
     }
 
@@ -110,9 +113,109 @@ async def root():
         """
 
 # Health check endpoint
-@app.get("/health", response_class=JSONResponse)
+@app.get("/api/health", response_class=JSONResponse)
 async def health_check():
     return {"status": "healthy"}
+
+# Test GET endpoint
+@app.get("/api/test")
+async def test_get_endpoint():
+    return {"message": "GET request successful"}
+
+# Test POST endpoint
+@app.post("/api/test")
+async def test_post_endpoint():
+    return {"message": "POST request successful"}
+
+# Test form submission endpoint
+@app.post("/api/test-form")
+async def test_form_endpoint(form_data: OAuth2PasswordRequestForm = Depends()):
+    return {
+        "message": "Form submission successful",
+        "username": form_data.username,
+        "password_length": len(form_data.password) if form_data.password else 0
+    }
+
+# Direct login endpoint for troubleshooting
+@app.post("/api/direct-login")
+async def direct_login(request: Request):
+    try:
+        # Get form data manually
+        form_data = await request.form()
+        username = form_data.get("username", "")
+        password = form_data.get("password", "")
+        
+        print(f"Direct login attempt with username: {username}")
+        print(f"Form data: {dict(form_data)}")
+        
+        # Get database session
+        db = next(get_db())
+        
+        from routers.user import verify_password, create_access_token
+        from datetime import timedelta
+        from config import settings
+        
+        ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        
+        # Demo accounts for testing
+        if username == 'admin@example.com' and password == 'admin123':
+            print("Using admin demo account")
+            return {
+                "access_token": "demo_token_for_admin",
+                "token_type": "bearer",
+                "role": "Admin"
+            }
+        elif username == 'user@example.com' and password == 'user123':
+            print("Using user demo account")
+            return {
+                "access_token": "demo_token_for_user",
+                "token_type": "bearer",
+                "role": "Customer"
+            }
+        elif username == 'agent@example.com' and password == 'agent123':
+            print("Using agent demo account")
+            return {
+                "access_token": "demo_token_for_agent",
+                "token_type": "bearer",
+                "role": "Agent"
+            }
+        
+        # Check database for user
+        user = db.query(models.User).filter(models.User.email == username).first()
+        
+        if not user:
+            print(f"User not found with email: {username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        if not verify_password(password, user.hashed_password):
+            print(f"Password verification failed for user: {username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email, "user_id": user.user_id, "company_id": str(user.company_id)},
+            expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": getattr(user, "role", None)
+        }
+    except Exception as e:
+        print(f"Direct login error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login error: {str(e)}"
+        )
 
 # Mount static files for assets (CSS, JS, images)
 static_files_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist", "assets")
@@ -381,7 +484,7 @@ def needs_handoff(user_message: str, bot_response: str) -> bool:
         return True
     return False
 
-@app.post("/chat")
+@app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     user_id = req.user_id
     user_message = req.message.strip()
