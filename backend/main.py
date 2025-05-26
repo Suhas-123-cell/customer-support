@@ -54,33 +54,88 @@ app.include_router(policies.router)
 app.include_router(faqs.router)
 app.include_router(cart.router)
 
-# Mount static files
-try:
-    app.mount("/", StaticFiles(directory="backend/static", html=True), name="static")
-    print("Static files mounted successfully")
-except Exception as e:
-    print(f"Error mounting static files: {e}")
-    # Fallback root route if static files are not available
-    @app.get("/", response_class=JSONResponse)
-    async def root():
-        return {
-            "message": "Welcome to the Customer Support API",
-            "documentation": "/docs",
-            "available_endpoints": [
-                "/companies", 
-                "/users", 
-                "/products", 
-                "/services", 
-                "/policies", 
-                "/faqs", 
-                "/cart"
-            ]
-        }
+# Define API root route
+@app.get("/api", response_class=JSONResponse)
+async def api_root():
+    return {
+        "message": "Welcome to the Customer Support API",
+        "documentation": "/docs",
+        "available_endpoints": [
+            "/companies", 
+            "/users", 
+            "/products", 
+            "/services", 
+            "/policies", 
+            "/faqs", 
+            "/cart"
+        ]
+    }
+
+# Root route that serves the frontend
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    # Path to the index.html file
+    index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist", "index.html")
+    
+    # Check if the file exists
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return f.read()
+    else:
+        # Fallback if index.html doesn't exist
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Customer Support API</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                h1 { color: #333; }
+                .api-link { display: inline-block; margin-top: 20px; padding: 10px 20px; 
+                           background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px; }
+                .api-link:hover { background-color: #45a049; }
+            </style>
+        </head>
+        <body>
+            <h1>Customer Support Application</h1>
+            <p>The frontend is not available. This could be because:</p>
+            <ul>
+                <li>The frontend build process failed</li>
+                <li>The frontend files are not in the expected location</li>
+            </ul>
+            <p>You can still access the API directly:</p>
+            <a class="api-link" href="/api">API Documentation</a>
+        </body>
+        </html>
+        """
 
 # Health check endpoint
 @app.get("/health", response_class=JSONResponse)
 async def health_check():
     return {"status": "healthy"}
+
+# Mount static files for assets (CSS, JS, images)
+static_files_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist", "assets")
+if os.path.exists(static_files_path):
+    app.mount("/assets", StaticFiles(directory=static_files_path), name="assets")
+    print(f"Static assets mounted from {static_files_path}")
+else:
+    print(f"Warning: Static assets directory not found at {static_files_path}")
+
+# Add a catch-all route to handle client-side routing
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str, request: Request):
+    # Skip API routes
+    if full_path.startswith("api/") or full_path in ["docs", "redoc", "openapi.json"]:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    # Serve the index.html for all other routes to support client-side routing
+    index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist", "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return HTMLResponse(content=f.read())
+    else:
+        raise HTTPException(status_code=404, detail="Frontend not built")
 
 # --- Chatbot Specific Code ---
 

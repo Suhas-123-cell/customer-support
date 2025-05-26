@@ -1,18 +1,27 @@
 #!/bin/bash
+set -e  # Exit immediately if a command exits with a non-zero status
+
+echo "Starting build process..."
 
 # Install backend dependencies
+echo "Installing backend dependencies..."
 pip install -r requirements.txt
 
 # Install frontend dependencies and build
+echo "Installing frontend dependencies and building frontend..."
 cd frontend
 npm install
 npm run build
 cd ..
 
-# Create a static directory in the backend if it doesn't exist
-mkdir -p backend/static
+echo "Frontend build completed."
 
-# Copy the frontend build to the backend static directory
-cp -r frontend/dist/* backend/static/
+# Create necessary directories for static files
+echo "Setting up static files..."
+mkdir -p frontend/dist
 
-echo "Build completed successfully!"
+# List the contents of the frontend/dist directory
+echo "Contents of frontend/dist directory:"
+ls -la frontend/dist || echo "frontend/dist directory not found or empty"
+
+echo "Build process completed successfully!"
