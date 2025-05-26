@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from routers import company, user, products, services, policies, faqs, cart # Import all routers
 from database import get_db
+from sqlalchemy.orm import Session
 import models
 import os
 from pydantic import BaseModel
@@ -387,23 +388,128 @@ def search_knowledge_base(query: str) -> list:
     query_lower = query.lower()
     results = []
     for item in knowledge_base:
-        # Check in common fields - wrapped in parentheses for clarity and to avoid backslashes
-        if (
+        # Check if item already matches in common fields
+        common_fields_match = (
             query_lower in item.get("question", "").lower() or
             query_lower in item.get("answer", "").lower() or
             query_lower in item.get("name", "").lower() or
             query_lower in item.get("description", "").lower() or
             query_lower in item.get("title", "").lower() or
             query_lower in item.get("content", "").lower()
-        ):
+        )
+        
+        if common_fields_match:
             results.append(item)
-            continue
+            continue  # Skip to next item since we already added this one
+            
+        # Check in features list if it exists
+        if any(query_lower in feature.lower() for feature in item.get("features", [])):
+            if item not in results:  # Avoid adding duplicates if already matched by common fields
+                results.append(item)
+    
+    return results[:3]  # Return top 3 matches
+def get_user_details(db: Session, customer_id: str) -> dict:
+    """
+    Fetch comprehensive user details including personal info, cart items, and purchase history.
+    
+    Args:
+        db: Database session
+        customer_id: User ID or email of the customer
+    
+    Returns:
+        Dictionary containing user details
+    """
+    try:
+        # Find the user by user_id or email
+        user = None
+        if "@" in customer_id:  # If it looks like an email
+            user = db.query(models.User).filter(models.User.email == customer_id).first()
+        else:
+            user = db.query(models.User).filter(models.User.user_id == customer_id).first()
+        
+        if not user:
+            return {"error": f"User with ID or email '{customer_id}' not found"}
+        
+        # Get company details
+        company = db.query(models.Company).filter(models.Company.id == user.company_id).first()
+        company_name = company.name if company else "Unknown Company"
+        
+        # Get current cart items
+        cart_items = db.query(models.CartItem).filter(models.CartItem.user_id == user.id).all()
+        
+        cart_details = []
+        for item in cart_items:
+            item_details = {"quantity": item.quantity, "added_at": item.added_at}
+            
+            if item.product_id:
+                product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+                if product:
+                    item_details.update({
+                        "type": "product",
+                        "id": product.id,
+                        "name": product.name,
+                        "description": product.description,
+                        "price": product.price
+                    })
+            
+            if item.service_id:
+                service = db.query(models.Service).filter(models.Service.id == item.service_id).first()
+                if service:
+                    item_details.update({
+                        "type": "service",
+                        "id": service.id,
+                        "name": service.name,
+                        "description": service.description,
+                        "price": service.price,
+                        "period": service.period
+                    })
+            
+            cart_details.append(item_details)
+        
+        # Get user questions
+        questions = db.query(models.ProductQuestion).filter(models.ProductQuestion.customer_id == user.id).all()
+        question_details = []
+        
+        for q in questions:
+            product = db.query(models.Product).filter(models.Product.id == q.product_id).first()
+            product_name = product.name if product else "Unknown Product"
+            
+            answers = db.query(models.ProductAnswer).filter(models.ProductAnswer.question_id == q.id).all()
+            answer_texts = [a.answer for a in answers]
+            
+            question_details.append({
+                "product_name": product_name,
+                "question": q.question,
+                "answers": answer_texts
+            })
+        
+        # Compile all user details
+        user_details = {
+            "personal_info": {
+                "id": user.id,
+                "user_id": user.user_id,
+                "email": user.email,
+                "role": user.role,
+                "company": company_name,
+                "company_id": user.company_id
+            },
+            "cart": {
+                "item_count": len(cart_details),
+                "items": cart_details
+            },
+            "questions": question_details
+        }
+        
+        return user_details
+    
+    except Exception as e:
+        print(f"Error fetching user details: {e}")
+        return {"error": f"Failed to fetch user details: {str(e)}"}
         # For products, also check features
         if item.get("type") == "product" and "features" in item:
             if any(query_lower in feature.lower() for feature in item.get("features", [])):
                 if item not in results: # Avoid adding duplicates if already matched by common fields
                     results.append(item)
-                continue
     return results[:3] # Return top 3 matches 
 
 # 3. Chat History (in-memory, simple implementation for demonstration)
@@ -413,6 +519,11 @@ MAX_HISTORY_LEN = 10 # Max number of messages (user + assistant) to keep in hist
 
 class ChatRequest(BaseModel):
     user_id: str
+    message: str
+
+class AgentChatRequest(BaseModel):
+    agent_id: str
+    customer_id: str
     message: str
 
 async def call_ai_service(prompt_messages: list):
@@ -615,6 +726,7 @@ def needs_handoff(user_message: str, bot_response: str) -> bool:
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
+    """Regular customer chat endpoint"""
     user_id = req.user_id
     user_message = req.message.strip()
     

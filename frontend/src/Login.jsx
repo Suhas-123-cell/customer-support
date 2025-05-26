@@ -17,7 +17,7 @@ export default function Login() {
     if (email === 'admin@example.com' && password === 'admin123') {
       console.log('Using admin login');
       // Store token data
-      localStorage.setItem("accessToken", "mock_token_for_testing");
+      localStorage.setItem("accessToken", "demo_token_for_admin");
       localStorage.setItem("tokenType", "bearer");
       localStorage.setItem("role", "Admin");
       localStorage.setItem("company_id", "1");
@@ -34,7 +34,7 @@ export default function Login() {
     if (email === 'user@example.com' && password === 'user123') {
       console.log('Using user login');
       // Store token data
-      localStorage.setItem("accessToken", "mock_token_for_testing");
+      localStorage.setItem("accessToken", "demo_token_for_user");
       localStorage.setItem("tokenType", "bearer");
       localStorage.setItem("role", "Customer");
       localStorage.setItem("company_id", "1");
@@ -51,7 +51,7 @@ export default function Login() {
     if (email === 'agent@example.com' && password === 'agent123') {
       console.log('Using agent login');
       // Store token data
-      localStorage.setItem("accessToken", "mock_token_for_testing");
+      localStorage.setItem("accessToken", "demo_token_for_agent");
       localStorage.setItem("tokenType", "bearer");
       localStorage.setItem("role", "Agent");
       localStorage.setItem("company_id", "1");

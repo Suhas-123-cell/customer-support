@@ -21,11 +21,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # For testing: Accept mock token
-    if token == "mock_token_for_testing":
-        # Get the role from localStorage on the frontend
-        # For testing, we'll check if the user exists in the database
-        
+    # For testing: Accept demo tokens
+    if token in ["demo_token_for_admin", "demo_token_for_user", "demo_token_for_agent"]:
         # Create a test company first if it doesn't exist
         test_company = db.query(models.Company).filter(models.Company.name == "Test Company").first()
         if not test_company:
@@ -80,9 +77,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             db.commit()
             db.refresh(agent_user)
         
-        # Return the appropriate user based on the email in localStorage
-        # For simplicity, we'll return the admin user for now
-        return admin_user
+        # Return the appropriate user based on the token
+        if token == "demo_token_for_admin":
+            return admin_user
+        elif token == "demo_token_for_user":
+            return test_user
+        elif token == "demo_token_for_agent":
+            return agent_user
+        else:
+            # Fallback to admin user
+            return admin_user
     
     # Normal JWT validation for real tokens
     try:
