@@ -13,6 +13,7 @@ function FormInput(props) {
     options,
     accept,
     required,
+    helperText,
     ...rest
   } = props;
 
@@ -41,6 +42,7 @@ function FormInput(props) {
             ))}
         </select>
         {error && <p className="form-error">{error}</p>}
+        {helperText && !error && <p className="form-helper-text">{helperText}</p>}
       </div>
     );
   }
@@ -63,6 +65,7 @@ function FormInput(props) {
           {...rest}
         />
         {error && <p className="form-error">{error}</p>}
+        {helperText && !error && <p className="form-helper-text">{helperText}</p>}
       </div>
     );
   }
@@ -86,6 +89,7 @@ function FormInput(props) {
         {...rest}
       />
       {error && <p className="form-error">{error}</p>}
+      {helperText && !error && <p className="form-helper-text">{helperText}</p>}
     </div>
   );
 }

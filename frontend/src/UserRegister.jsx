@@ -20,12 +20,40 @@ function UserRegister() {
 
   function validate() {
     var newErrors = {};
+    // Full name can be anything, just check if it's provided
     if (!form.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(form.email))
-      newErrors.email = "Invalid email format";
+    
+    // Company code validation - should start with company name followed by a number
+    if (!form.companyCode.trim()) {
+      newErrors.companyCode = "Company code is required";
+    } else {
+      // Check if it contains at least one letter followed by at least one number
+      if (!/^[a-zA-Z]+[0-9]+$/.test(form.companyCode)) {
+        newErrors.companyCode = "Company code must start with company name followed by a number (e.g., acme123)";
+      }
+    }
+    
+    // Email validation - should be in format user@company.com
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else {
+      // Basic email format validation
+      if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(form.email)) {
+        newErrors.email = "Invalid email format";
+      } else {
+        // Extract company name from company code (letters only)
+        const companyName = form.companyCode.match(/^[a-zA-Z]+/);
+        if (companyName && companyName[0]) {
+          // Check if email domain starts with the company name
+          const emailDomain = form.email.split('@')[1];
+          if (!emailDomain.startsWith(companyName[0].toLowerCase())) {
+            newErrors.email = `Email domain must match company name: user@${companyName[0].toLowerCase()}.com`;
+          }
+        }
+      }
+    }
+    
     if (!form.role) newErrors.role = "Role is required";
-    if (!form.companyCode.trim()) newErrors.companyCode = "Company code is required";
     if (!form.password) newErrors.password = "Password is required";
     if (!form.confirmPassword) newErrors.confirmPassword = "Confirm your password";
     if (form.password && form.confirmPassword && form.password !== form.confirmPassword)
@@ -97,11 +125,67 @@ function UserRegister() {
       <form className="register-form" onSubmit={handleSubmit} encType="multipart/form-data">
         <div className="register-title">Create User Account</div>
         <div className="register-grid">
-          <FormInput label="Full Name" name="fullName" value={form.fullName} onChange={handleChange} onBlur={handleBlur} required error={errors.fullName} />
-          <FormInput label="Email Address" name="email" type="email" value={form.email} onChange={handleChange} onBlur={handleBlur} required error={errors.email} />
-          <FormInput label="Role" name="role" type="select" value={form.role} onChange={handleChange} onBlur={handleBlur} options={["Admin", "Agent", "Customer"]} required error={errors.role} />
-          <FormInput label="Department" name="department" value={form.department} onChange={handleChange} onBlur={handleBlur} placeholder="Optional" />
-          <FormInput label="Company Code / ID" name="companyCode" value={form.companyCode} onChange={handleChange} onBlur={handleBlur} required error={errors.companyCode} />
+          <FormInput 
+            label="Full Name" 
+            name="fullName" 
+            value={form.fullName} 
+            onChange={handleChange} 
+            onBlur={handleBlur} 
+            required 
+            error={errors.fullName} 
+          />
+          <FormInput 
+            label="Email Address" 
+            name="email" 
+            type="email" 
+            value={form.email} 
+            onChange={handleChange} 
+            onBlur={handleBlur} 
+            required 
+            error={errors.email} 
+            helperText={form.companyCode ? `Format: user@${form.companyCode.match(/^[a-zA-Z]+/)?.[0]?.toLowerCase() || 'company'}.com` : "Format: user@company.com"}
+            placeholder={form.companyCode ? `user@${form.companyCode.match(/^[a-zA-Z]+/)?.[0]?.toLowerCase() || 'company'}.com` : "user@company.com"}
+          />
+          <FormInput 
+            label="Role" 
+            name="role" 
+            type="select" 
+            value={form.role} 
+            onChange={handleChange} 
+            onBlur={handleBlur} 
+            options={["Admin", "Agent", "Customer"]} 
+            required 
+            error={errors.role} 
+          />
+          <FormInput 
+            label="Department" 
+            name="department" 
+            value={form.department} 
+            onChange={handleChange} 
+            onBlur={handleBlur} 
+            placeholder="Optional" 
+          />
+          <FormInput 
+            label="Company Code / ID" 
+            name="companyCode" 
+            value={form.companyCode} 
+            onChange={handleChange} 
+            onBlur={(e) => {
+              handleBlur(e);
+              // Update email placeholder when company code changes
+              if (form.email && form.email.includes('@')) {
+                const username = form.email.split('@')[0];
+                const companyName = e.target.value.match(/^[a-zA-Z]+/)?.[0]?.toLowerCase();
+                if (companyName) {
+                  const newEmail = `${username}@${companyName}.com`;
+                  setForm(prev => ({ ...prev, email: newEmail }));
+                }
+              }
+            }} 
+            required 
+            error={errors.companyCode}
+            helperText="Format: company name followed by a number (e.g., acme123)"
+          />
           <FormInput label="Profile Picture" name="profilePic" type="file" accept="image/*" onChange={handleChange} onBlur={handleBlur} />
           <FormInput label="Password" name="password" type="password" value={form.password} onChange={handleChange} onBlur={handleBlur} required error={errors.password} />
           <FormInput label="Confirm Password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} onBlur={handleBlur} required error={errors.confirmPassword} />
