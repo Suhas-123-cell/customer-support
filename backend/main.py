@@ -290,6 +290,45 @@ async def simple_login(request: Request):
                 "role": "Agent"
             }
         
+        # Check for registered accounts in the database
+        try:
+            from routers.user import verify_password, create_access_token
+            from datetime import timedelta
+            from config import settings
+            
+            # Get database session
+            db = next(get_db())
+            
+            # Check if user exists
+            user = db.query(models.User).filter(models.User.email == username).first()
+            
+            if user:
+                print(f"Found registered user: {username}")
+                
+                # Verify password
+                if verify_password(password, user.hashed_password):
+                    print(f"Password verified for user: {username}")
+                    
+                    # Create access token
+                    ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+                    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+                    access_token = create_access_token(
+                        data={"sub": user.email, "user_id": user.user_id, "company_id": str(user.company_id)},
+                        expires_delta=access_token_expires
+                    )
+                    
+                    return {
+                        "access_token": access_token,
+                        "token_type": "bearer",
+                        "role": getattr(user, "role", "Customer")
+                    }
+                else:
+                    print(f"Password verification failed for user: {username}")
+            else:
+                print(f"User not found: {username}")
+        except Exception as db_error:
+            print(f"Database error during login: {db_error}")
+        
         # For any other account, just accept it in demo mode
         print(f"Accepting login for {username} in demo mode")
         return {
@@ -317,9 +356,10 @@ else:
 # Add a catch-all route to handle client-side routing
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str, request: Request):
-    # Skip API routes
-    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
-        raise HTTPException(status_code=404, detail="Not found")
+    # Skip API routes - don't handle them here
+    if full_path.startswith("api/") or full_path == "api" or full_path in ["docs", "redoc", "openapi.json"]:
+        print(f"API route detected in catch_all: {full_path}, method: {request.method}")
+        raise HTTPException(status_code=404, detail="API route not found")
     
     # Serve the index.html for all other routes to support client-side routing
     index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist", "index.html")
