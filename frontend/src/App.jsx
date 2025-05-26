@@ -75,7 +75,7 @@ const Dashboard = () => {
       };
       console.log('Request body:', requestBody);
       
-      const response = await fetch('http://localhost:8000/cart/items', {
+      const response = await fetch(`${API_URL}/cart/items`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -107,7 +107,7 @@ const Dashboard = () => {
   // Function to remove item from cart
   const removeFromCart = async (itemId) => {
     try {
-      const response = await fetch(`http://localhost:8000/cart/items/${itemId}`, {
+      const response = await fetch(`${API_URL}/cart/items/${itemId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -132,7 +132,7 @@ const Dashboard = () => {
   const checkout = async () => {
     try {
       console.log('Checking out...');
-      const response = await fetch('http://localhost:8000/cart/checkout', {
+      const response = await fetch(`${API_URL}/cart/checkout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -177,7 +177,7 @@ const Dashboard = () => {
       
       console.log('Product data with company_id:', productData);
       
-      const response = await fetch('http://localhost:8000/products/', {
+      const response = await fetch(`${API_URL}/products/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -216,7 +216,7 @@ const Dashboard = () => {
       
       console.log('Service data with company_id:', serviceData);
       
-      const response = await fetch('http://localhost:8000/services/', {
+      const response = await fetch(`${API_URL}/services/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -424,7 +424,7 @@ const Dashboard = () => {
                       const priceInCents = Math.round(parseFloat(price) * 100);
                       
                       // Update product
-                      fetch(`http://localhost:8000/products/${product.id}`, {
+                      fetch(`${API_URL}/products/${product.id}`, {
                         method: 'PUT',
                         headers: {
                           'Authorization': `Bearer ${token}`,
@@ -451,7 +451,7 @@ const Dashboard = () => {
                     }}>Edit</button>
                     <button className="delete-btn" onClick={() => {
                       if (confirm(`Are you sure you want to delete ${product.name}?`)) {
-                        fetch(`http://localhost:8000/products/${product.id}`, {
+                        fetch(`${API_URL}/products/${product.id}`, {
                           method: 'DELETE',
                           headers: {
                             'Authorization': `Bearer ${token}`,
@@ -540,7 +540,7 @@ const Dashboard = () => {
                       const priceInCents = Math.round(parseFloat(price) * 100);
                       
                       // Update service
-                      fetch(`http://localhost:8000/services/${service.id}`, {
+                      fetch(`${API_URL}/services/${service.id}`, {
                         method: 'PUT',
                         headers: {
                           'Authorization': `Bearer ${token}`,
@@ -568,7 +568,7 @@ const Dashboard = () => {
                     }}>Edit</button>
                     <button className="delete-btn" onClick={() => {
                       if (confirm(`Are you sure you want to delete ${service.name}?`)) {
-                        fetch(`http://localhost:8000/services/${service.id}`, {
+                        fetch(`${API_URL}/services/${service.id}`, {
                           method: 'DELETE',
                           headers: {
                             'Authorization': `Bearer ${token}`,
