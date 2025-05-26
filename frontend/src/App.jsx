@@ -39,7 +39,10 @@ const Dashboard = () => {
 
   // Function to fetch data from the backend
   // Get API URL from environment variables
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  // If VITE_API_URL is empty, use the current origin (for production)
+  // If that's not available, fall back to localhost (for development)
+  const API_URL = import.meta.env.VITE_API_URL || 
+                 (window.location.origin !== 'null' ? window.location.origin : 'http://localhost:8000');
   
   const fetchData = async (endpoint) => {
     try {

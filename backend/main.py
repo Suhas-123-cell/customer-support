@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from routers import company, user, products, services, policies, faqs, cart # Import all routers
 import os
 from pydantic import BaseModel
@@ -51,6 +53,34 @@ app.include_router(services.router)
 app.include_router(policies.router)
 app.include_router(faqs.router)
 app.include_router(cart.router)
+
+# Mount static files
+try:
+    app.mount("/", StaticFiles(directory="backend/static", html=True), name="static")
+    print("Static files mounted successfully")
+except Exception as e:
+    print(f"Error mounting static files: {e}")
+    # Fallback root route if static files are not available
+    @app.get("/", response_class=JSONResponse)
+    async def root():
+        return {
+            "message": "Welcome to the Customer Support API",
+            "documentation": "/docs",
+            "available_endpoints": [
+                "/companies", 
+                "/users", 
+                "/products", 
+                "/services", 
+                "/policies", 
+                "/faqs", 
+                "/cart"
+            ]
+        }
+
+# Health check endpoint
+@app.get("/health", response_class=JSONResponse)
+async def health_check():
+    return {"status": "healthy"}
 
 # --- Chatbot Specific Code ---
 
