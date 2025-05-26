@@ -571,7 +571,7 @@ const Dashboard = () => {
                     }}>Edit</button>
                     <button className="delete-btn" onClick={() => {
                       if (confirm(`Are you sure you want to delete ${service.name}?`)) {
-                        fetch(`${API_URL}/services/${service.id}`, {
+                        fetch(`${API_URL}/api/services/${service.id}`, {
                           method: 'DELETE',
                           headers: {
                             'Authorization': `Bearer ${token}`,
@@ -620,7 +620,7 @@ const Dashboard = () => {
                     };
                     
                     try {
-                      const response = await fetch('http://localhost:8000/policies/', {
+                      const response = await fetch(`${API_URL}/api/policies/`, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${token}`,
@@ -661,7 +661,7 @@ const Dashboard = () => {
                       if (!content) return;
                       
                       // Update policy
-                      fetch(`http://localhost:8000/policies/${policy.id}`, {
+                      fetch(`${API_URL}/api/policies/${policy.id}`, {
                         method: 'PUT',
                         headers: {
                           'Authorization': `Bearer ${token}`,
@@ -687,7 +687,7 @@ const Dashboard = () => {
                     }}>Edit</button>
                     <button className="delete-btn" onClick={() => {
                       if (confirm(`Are you sure you want to delete ${policy.title}?`)) {
-                        fetch(`http://localhost:8000/policies/${policy.id}`, {
+                        fetch(`${API_URL}/api/policies/${policy.id}`, {
                           method: 'DELETE',
                           headers: {
                             'Authorization': `Bearer ${token}`,
@@ -736,7 +736,7 @@ const Dashboard = () => {
                     };
                     
                     try {
-                      const response = await fetch('http://localhost:8000/faqs/', {
+                      const response = await fetch(`${API_URL}/api/faqs/`, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${token}`,
@@ -777,7 +777,7 @@ const Dashboard = () => {
                       if (!answer) return;
                       
                       // Update FAQ
-                      fetch(`http://localhost:8000/faqs/${faq.id}`, {
+                      fetch(`${API_URL}/api/faqs/${faq.id}`, {
                         method: 'PUT',
                         headers: {
                           'Authorization': `Bearer ${token}`,
@@ -803,7 +803,7 @@ const Dashboard = () => {
                     }}>Edit</button>
                     <button className="delete-btn" onClick={() => {
                       if (confirm(`Are you sure you want to delete this FAQ?`)) {
-                        fetch(`http://localhost:8000/faqs/${faq.id}`, {
+                        fetch(`${API_URL}/api/faqs/${faq.id}`, {
                           method: 'DELETE',
                           headers: {
                             'Authorization': `Bearer ${token}`,
