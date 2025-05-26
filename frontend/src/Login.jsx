@@ -65,14 +65,7 @@ export default function Login() {
       return;
     }
 
-    // If we get here, it's not a predefined account
-    setTimeout(() => {
-      setError("❌ Invalid email or password. Please try again or use one of the demo accounts.");
-      setLoading(false);
-    }, 800);
-
-    // The following code is commented out until the backend is ready
-    /*
+    // For all other accounts, try to authenticate with the backend
     const formData = new URLSearchParams();
     formData.append("username", email); // Backend expects 'username' for email
     formData.append("password", password);
@@ -80,7 +73,15 @@ export default function Login() {
     try {
       console.log(`Attempting to login with email: ${email}`);
       
-      const res = await fetch("http://127.0.0.1:8000/users/login", {
+      // Get API URL from environment variables or use current origin
+      const API_URL = import.meta.env.VITE_API_URL || 
+                     (window.location.origin !== 'null' ? window.location.origin : 'http://localhost:8000');
+      
+      const loginUrl = `${API_URL}/api/users/login`;
+      console.log(`Login URL: ${loginUrl}`);
+      console.log(`Request body: username=${email}, password=${password.substring(0, 1)}***`);
+      
+      const res = await fetch(loginUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -90,18 +91,34 @@ export default function Login() {
 
       console.log(`Login response status: ${res.status}`);
       
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('Login error response:', errorData);
+        throw new Error(errorData.detail || "Login failed. Please check your credentials.");
+      }
+      
       const data = await res.json();
       console.log('Login response data:', data);
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Login failed. Please check your credentials.");
-      }
 
       // Store the token (e.g., in localStorage)
       localStorage.setItem("accessToken", data.access_token);
       localStorage.setItem("tokenType", data.token_type);
       const userRole = data.role ? data.role.trim() : "";
       localStorage.setItem("role", userRole);
+      
+      // Extract company_id from JWT token if possible
+      try {
+        const tokenParts = data.access_token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('Token payload:', payload);
+          if (payload.company_id) {
+            localStorage.setItem("company_id", payload.company_id);
+          }
+        }
+      } catch (tokenErr) {
+        console.error('Error parsing token:', tokenErr);
+      }
       
       console.log(`User role: ${userRole}`);
       
@@ -114,11 +131,9 @@ export default function Login() {
 
     } catch (err) {
       console.error('Login error:', err);
-      setError("❌ " + (err.message || "An unexpected error occurred."));
-    } finally {
+      setError("❌ " + (err.message || "Invalid email or password. Please try again or use one of the demo accounts."));
       setLoading(false);
     }
-    */
   };
 
   return (
